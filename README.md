@@ -73,6 +73,12 @@ Open `http://localhost:8080`. The Docker deployment exposes only the browser fro
 
 Compose first runs a narrowly scoped `db-init` helper that owns only the named SQLite data volume long enough to grant it to the non-root API user. The API, frontend, and worker services then run with read-only filesystems, dropped capabilities, resource limits, and health checks.
 
+## Deploy a public demo on Render
+
+The root [render.yaml](render.yaml) deploys one public Docker web service. It builds the React dashboard and serves it from the FastAPI process, so the dashboard and API use the same origin. In Render, select **New > Blueprint**, choose this GitHub repository, and provide a strong `BAYORA_DEMO_PASSWORD` when prompted. Render generates `BAYORA_AUTH_SECRET` automatically and the development role header is disabled.
+
+The included free-plan configuration stores demo data in an ephemeral SQLite filesystem. Test history and uploads can disappear after a restart or redeploy. Use managed PostgreSQL, durable object storage, a real identity provider, and a paid production plan before treating this as a persistent or multi-user deployment.
+
 ## Database migrations
 
 The app creates its local schema at startup for a zero-friction demo. For a managed deployment, use the included initial migration:

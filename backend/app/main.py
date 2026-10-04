@@ -2,10 +2,12 @@ import csv
 import io
 import ipaddress
 from contextlib import asynccontextmanager
+from pathlib import Path
 from urllib.parse import urlparse
 from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from .config import get_settings
@@ -412,3 +414,16 @@ def infrastructure(db: Session = Depends(get_db), _: str = Depends(require_roles
 @app.get("/api/v1/audit")
 def audit_logs(limit: int = Query(default=50, ge=1, le=200), db: Session = Depends(get_db), _: str = Depends(require_roles("administrator"))):
     return [{"id": item.id, "actor": item.actor, "action": item.action, "resource_type": item.resource_type, "resource_id": item.resource_id, "detail": item.detail, "created_at": item.created_at} for item in db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit).all()]
+
+
+# The deployment image copies the built React app here. Register this fallback
+# after every API route so /api and /health always reach their explicit handlers.
+static_directory = Path(__file__).with_name("static")
+if static_directory.is_dir():
+    assets_directory = static_directory / "assets"
+    if assets_directory.is_dir():
+        app.mount("/assets", StaticFiles(directory=assets_directory), name="frontend-assets")
+
+    @app.get("/{frontend_path:path}", include_in_schema=False)
+    def frontend_app(frontend_path: str):
+        return FileResponse(static_directory / "index.html")

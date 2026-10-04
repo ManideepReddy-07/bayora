@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: bayora
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health/ready
+    autoDeployTrigger: commit
+    envVars:
+      # Render's free filesystem is ephemeral; this is a shareable demo,
+      # not durable evidence storage. Use managed Postgres before production.
+      - key: BAYORA_DATABASE_URL
+        value: sqlite:////data/bayora.db
+      - key: BAYORA_CORS_ORIGINS
+        value: ""
+      - key: BAYORA_ALLOW_DEMO_ROLE_HEADER
+        value: "false"
+      - key: BAYORA_AUTH_SECRET
+        generateValue: true
+      # Render asks for this value when the Blueprint is first created.
+      # Share it only with the people who should access the demo.
+      - key: BAYORA_DEMO_PASSWORD
+        sync: false
