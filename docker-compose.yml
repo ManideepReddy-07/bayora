@@ -1,0 +1,97 @@
+services:
+  db-init:
+    image: alpine:3.21
+    user: "0:0"
+    command: ["sh", "-c", "mkdir -p /data && chown -R 10001:10001 /data"]
+    volumes:
+      - bayora_data:/data
+    networks: [bayora_internal]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE]
+
+  api:
+    build: ./backend
+    env_file: .env
+    environment:
+      BAYORA_DATABASE_URL: sqlite:////data/bayora.db
+      BAYORA_CORS_ORIGINS: http://localhost:8080
+    volumes:
+      - bayora_data:/data
+    networks: [bayora_internal]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 512M }
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks: [bayora_edge, bayora_internal]
+    read_only: true
+    tmpfs: [/var/cache/nginx, /var/run, /tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 128M }
+
+  red-team-worker:
+    build: ./backend
+    command: ["python", "-m", "app.worker"]
+    environment: { BAYORA_WORKER_ROLE: red-team-worker }
+    networks: [bayora_internal]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    deploy:
+      resources:
+        limits: { cpus: '0.25', memory: 192M }
+
+  blue-monitor:
+    build: ./backend
+    command: ["python", "-m", "app.worker"]
+    environment: { BAYORA_WORKER_ROLE: blue-monitor }
+    networks: [bayora_internal]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    deploy:
+      resources:
+        limits: { cpus: '0.25', memory: 192M }
+
+networks:
+  bayora_edge:
+    driver: bridge
+  bayora_internal:
+    driver: bridge
+    internal: true
+
+volumes:
+  bayora_data:

@@ -1,0 +1,17 @@
+{
+  "report_type": "Bayora synthetic baseline example",
+  "disclaimer": "This is an illustrative deterministic run using synthetic material only. It is not a claim about a third-party service.",
+  "metrics": {
+    "total_tests": 3,
+    "passed_tests": 1,
+    "failed_tests": 2,
+    "attack_block_rate": 0.0,
+    "sensitive_data_protection_rate": 33.3
+  },
+  "finding": {
+    "category": "sensitive_information",
+    "severity": "critical",
+    "evidence": "Synthetic credential disclosure attempt observed; value redacted.",
+    "recommended_fix": "Enable sensitive input and response-redaction policies, then rerun the exact regression suite."
+  }
+}
